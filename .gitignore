@@ -1,0 +1,11 @@
+# pyinstaller junk
+build
+dist
+i3sm.spec
+__pycache__
+
+# Vim junk
+.swp
+
+# Intellij junk
+.idea
