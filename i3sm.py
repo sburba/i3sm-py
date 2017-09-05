@@ -1,20 +1,24 @@
 #!/usr/bin/env python3
 
+import sys
 from enum import Enum
 from typing import Optional
-import sys
 
 import i3ipc
 from i3ipc.i3ipc import Con
 
 
-def window_contains(window: Con, x: int, y: int) -> bool:
+def contains(window: Con, x: int, y: int) -> bool:
     return (window.rect.x <= x < window.rect.x + window.rect.width
             and window.rect.y <= y < window.rect.y + window.rect.height)
 
 
-def find_window_at(x: int, y: int, tree: Con) -> Optional[Con]:
-    return next((leaf for leaf in tree.leaves() if window_contains(leaf, x, y)), None)
+def is_eligible_node(node: Con):
+    return (node.type == 'con' or node.type == 'workspace') and not node.nodes
+
+
+def find_eligible_node_at(x: int, y: int, tree: Con) -> Optional[Con]:
+    return next((node for node in tree.descendents() if is_eligible_node(node) and contains(node, x, y)), None)
 
 
 class Direction(Enum):
@@ -31,15 +35,17 @@ def focus(i3: i3ipc.Connection, dir: Direction):
     x, y = active_window.rect.x, active_window.rect.y
     width, height = active_window.rect.width, active_window.rect.height
     if dir == Direction.LEFT:
-        correct_window = find_window_at(x - 1, y, tree)
+        x = x - 1
     elif dir == Direction.RIGHT:
-        correct_window = find_window_at(x + width + 1, y, tree)
+        x = x + width + 1
     elif dir == Direction.UP:
-        correct_window = find_window_at(x, y - 1, tree)
+        y = y - 1
     elif dir == Direction.DOWN:
-        correct_window = find_window_at(x, y + height + 1, tree)
+        y = y + height + 1
     else:
-        correct_window = None
+        raise ValueError('{} is not a valid direction', dir)
+
+    correct_window = find_eligible_node_at(x, y, tree)
 
     if correct_window is not None:
         correct_window.command('focus')
